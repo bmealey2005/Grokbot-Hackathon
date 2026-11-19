@@ -1,0 +1,126 @@
+import { POST as extract } from "@/app/api/extract/route";
+import { POST as grade } from "@/app/api/grade/route";
+import { POST as question } from "@/app/api/question/route";
+import {
+  AnswerResultSchema,
+  Deck,
+  ExtractResponse,
+  QuestionEnvelopeSchema,
+  WidgetSpec,
+} from "@/lib/schema";
+import { describe, expect, it } from "vitest";
+import { sampleDeck } from "./cell-biology";
+import { widgetSpecs } from "./widgets";
+
+const widgetNames = [
+  "multipleChoice",
+  "trueFalse",
+  "cloze",
+  "typeAnswer",
+  "matchPairs",
+  "orderSteps",
+  "slider",
+  "explain",
+] as const;
+
+describe("fixtures", () => {
+  it("validates the Cell Biology Basics deck", () => {
+    const deck = Deck.parse(sampleDeck);
+    expect(deck.title).toBe("Cell Biology Basics");
+    expect(deck.concepts).toHaveLength(12);
+    const ids = deck.concepts.map((concept) => concept.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const concept of deck.concepts) {
+      expect(concept.term.length).toBeGreaterThan(0);
+      expect(concept.definition.length).toBeGreaterThan(0);
+      expect(concept.facts.length).toBeGreaterThan(0);
+      for (const relatedId of concept.related) {
+        expect(ids).toContain(relatedId);
+        expect(relatedId).not.toBe(concept.id);
+      }
+    }
+  });
+
+  it("validates one fixture spec for every widget", () => {
+    expect(Object.keys(widgetSpecs).sort()).toEqual([...widgetNames].sort());
+    for (const name of widgetNames) {
+      const spec = WidgetSpec.parse(widgetSpecs[name]);
+      expect(spec.widget).toBe(name);
+    }
+  });
+
+  it("rejects a widget outside the registry", () => {
+    const parsed = WidgetSpec.safeParse({
+      widget: "diagram",
+      props: { prompt: "Label this" },
+    });
+    expect(parsed.success).toBe(false);
+  });
+});
+
+describe("fixture API stubs", () => {
+  it("POST /api/extract returns a deck", async () => {
+    const response = await extract(
+      new Request("http://localhost/api/extract", {
+        method: "POST",
+        body: JSON.stringify({ text: "Mitochondria make ATP.", title: "Night before bio" }),
+      }),
+    );
+    expect(response.status).toBe(200);
+    const body = ExtractResponse.parse(await response.json());
+    expect(body.deck.title).toBe("Night before bio");
+    expect(body.deck.concepts).toHaveLength(12);
+  });
+
+  it("POST /api/extract rejects a bad body", async () => {
+    const response = await extract(
+      new Request("http://localhost/api/extract", {
+        method: "POST",
+        body: JSON.stringify({ title: "missing text" }),
+      }),
+    );
+    expect(response.status).toBe(400);
+  });
+
+  it("POST /api/question avoids a recently used widget", async () => {
+    const concept = sampleDeck.concepts[0];
+    const response = await question(
+      new Request("http://localhost/api/question", {
+        method: "POST",
+        body: JSON.stringify({
+          concept,
+          neighbors: [],
+          level: 1,
+          recentWidgets: ["multipleChoice"],
+        }),
+      }),
+    );
+    expect(response.status).toBe(200);
+    const body = QuestionEnvelopeSchema.parse(await response.json());
+    expect(body.spec.widget).toBe("trueFalse");
+    expect(body.level).toBe(1);
+    expect(body.conceptIds).toEqual([concept.id]);
+  });
+
+  it("POST /api/grade scores a free-text answer against the rubric", async () => {
+    const response = await grade(
+      new Request("http://localhost/api/grade", {
+        method: "POST",
+        body: JSON.stringify({
+          concept: sampleDeck.concepts[0],
+          prompt: "Explain how an enzyme speeds up a reaction.",
+          rubric: [
+            "It lowers the activation energy of the reaction",
+            "The substrate binds at the active site",
+          ],
+          answer: "It lowers the activation energy so the reaction happens faster.",
+        }),
+      }),
+    );
+    expect(response.status).toBe(200);
+    const body = AnswerResultSchema.parse(await response.json());
+    expect(body.score).toBe(0.5);
+    expect(body.correct).toBe(false);
+    expect(body.missing).toEqual(["The substrate binds at the active site"]);
+  });
+});
