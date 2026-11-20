@@ -110,7 +110,7 @@ export function fallbackEnvelope(request: QuestionRequest): QuestionEnvelope {
     spec: {
       widget: "typeAnswer",
       props: {
-        prompt: `What is ${request.concept.term}?`,
+        prompt: `Which term matches this description? ${request.concept.definition}`,
         accepted: [request.concept.term],
         explanation: request.concept.definition,
       },
