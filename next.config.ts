@@ -4,6 +4,8 @@ const nextConfig: NextConfig = {
   /* config options here */
   cacheComponents: true,
   partialPrefetching: true,
+  // The bottom-left dev badge covers feedback and Next question at phone widths.
+  devIndicators: false,
   turbopack: {
     rules: {
       "*.css": {
