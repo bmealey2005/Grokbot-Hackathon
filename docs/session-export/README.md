@@ -36,4 +36,4 @@ Replace each hit with `[REDACTED]`. Do not leave the original in a commit and th
 - [ ] A second teammate has opened the files and repeated the search
 - [ ] The README at the repo root links the export from "How Grok Bot helped build it"
 
-Keep secrets in the host dashboard, not in these files. `XAI_API_KEY` stays in `.env.local` or in the deploy host's environment variables.
+Keep secrets in the host dashboard, not in these files. `ANTHROPIC_API_KEY` is the key the host must set. Optional `OPENAI_API_KEY` is the extract and question fallback. Both stay in `.env.local` or in the deploy host's environment variables.

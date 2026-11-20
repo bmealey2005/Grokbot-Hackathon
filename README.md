@@ -51,21 +51,20 @@ The eight widgets (`spec.widget`):
 | `slider` | Choose a number inside a min/max, within a tolerance | In the widget |
 | `explain` | Write an explanation against a rubric | `POST /api/grade` |
 
-**What `main` runs today** (`f2d66b5`, scaffold plus [PR #1](https://github.com/bmealey2005/Grokbot-Hackathon/pull/1)):
+**What `main` runs today** (`abc00bb`, through [PR #4](https://github.com/bmealey2005/Grokbot-Hackathon/pull/4)):
 
-- Home, `/study/[deckId]`, and `/results/[deckId]` are still stub pages. Home links to the sample deck `cell-biology-basics`. The study page names the deck id and comments the `useSession(deckId)` call Agent 2 should make. The results page names the deck id. The mastery map UI is not built.
+- Home renders `RecallLibrary`. `/study/[deckId]` renders `RecallStudy`. `/results/[deckId]` renders `RecallResults`. Those screens came in with the merged preview, [PR #2](https://github.com/bmealey2005/Grokbot-Hackathon/pull/2). `src/widgets/registry.tsx` is still the stub that submits a score of 0. The eight widget components are in draft [PR #5](https://github.com/bmealey2005/Grokbot-Hackathon/pull/5) and are not on `main`.
 - The session engine is in. `useSession(deckId)` from `@/lib/useSession` returns `{ current, submit, progress, isLoading }`. `current` is `{ envelope, concept, level }` or `null`. `submit(result)` takes an `AnswerResult`. `progress` is `{ answered, correct, conceptCount, percent, byConcept }`. `isLoading` is true while the next question is in flight. The question after the one on screen is prefetched.
 - `useRecallStore` persists `{ decks, mastery }` to `localStorage` under the key `recall-store`. Unreadable or invalid saves are dropped. `loadSampleDeck()` inserts `cell-biology-basics`. `useSession("cell-biology-basics")` loads that deck on its own.
 - The scheduler promotes at score `>= 0.8` (level max 3, ease `+0.1`, cap 3.0). Intervals step 1 minute, 10 minutes, 1 day, 3 days, then interval × ease, capped at 30 days. A score below `0.5` demotes (level min 1, ease `−0.2`, floor 1.3) and resets the interval to 1 minute when it was in-session, or 10 minutes when it had been scheduled further out. Scores in between keep the level and stretch the interval by 1.2. `masteryPercent` weights level, the last five scores, and streak, and returns 0–100.
 - The session asks the most overdue concept, or the weakest when nothing is due. It skips the concept just asked when the deck has another one. `recentWidgets` is the last six widget names. If `/api/question` returns a payload that fails validation, the runner falls back to a local `typeAnswer` ("What is {term}?") accepted as the term itself.
-- `POST /api/extract` validates the body with zod and returns the fixture deck "Cell Biology Basics" (12 concepts). A non-empty `title` replaces the fixture title. The note text is not parsed.
-- `POST /api/question` validates the body and returns a fixture spec. The fixture picker uses level 1 for `multipleChoice` and `trueFalse`, level 2 for `cloze`, `typeAnswer`, and `matchPairs`, and level 3 for `orderSteps`, `slider`, and `explain`, skipping names listed in `recentWidgets` when it can.
-- `POST /api/grade` is a keyword stub. A rubric point counts as hit when the answer contains one of its words of 5+ letters. `correct` is `score >= 0.8`.
-- `src/widgets/registry.tsx` renders the widget name and a Submit button that reports `score: 0`. It mounts `@dnd-kit` and a Framer Motion wrapper so those dependencies are wired. It is not connected to `useSession`.
-- `src/lib/aiClient.ts` is a typed `fetch` wrapper around the three routes. Timeouts, retry, and response zod checks are not in this file yet. The session validates the question payload itself.
-- No source file reads `XAI_API_KEY` or `DEMO_MODE`.
+- `POST /api/extract` reads notes up to 20,000 characters. `DEMO_MODE=fixtures`, or a missing `ANTHROPIC_API_KEY`, builds a deck locally: Quizlet rows (`term<TAB>definition` or `term - definition`) when the paste matches, otherwise the local reader. With `ANTHROPIC_API_KEY` set and demo mode unset, a Quizlet paste is parsed locally and Claude may add facts that appear in the source. Other notes go to Claude for 5–25 concepts. A model failure falls back to the local deck. If there is no Anthropic key, demo mode is unset, and `OPENAI_API_KEY` is set, extract tries OpenAI `gpt-5-mini` and otherwise stays local.
+- `POST /api/question` asks Claude for one of the eight widgets when `ANTHROPIC_API_KEY` is set and `DEMO_MODE` is not `fixtures`. zod and the server checks reject a bad spec. The call retries once. If that fails, or if there is no Anthropic key, the route returns a local question, then a `typeAnswer` ("What term matches: {definition}?"). The same OpenAI fallback as extract applies when only `OPENAI_API_KEY` is set.
+- `POST /api/grade` sends the free-text answer to Claude when `ANTHROPIC_API_KEY` is set and demo mode is unset. `correct` is `score >= 0.7`. A model failure, a missing key, or `DEMO_MODE=fixtures` uses the keyword grader at that same 0.7 line. Grade does not call OpenAI.
+- `src/lib/aiClient.ts` validates responses, retries once, and throws `StudyClientError` with a message the UI can show.
+- The model is Claude, not xAI Grok. Nothing on `main` reads `XAI_API_KEY`.
 
-The sample deck and one valid fixture spec per widget live in `src/fixtures/`. Agent 1's pull request describes 26 Vitest tests covering promotion, demotion, interval growth, due ordering, no back-to-back repeats, corrupt `localStorage` recovery, prefetch, and `useSession()`. The fixture file still checks the deck, every widget spec, and the three stub routes.
+Cell Biology Basics is still the sample deck in `src/fixtures/`. [PR #4](https://github.com/bmealey2005/Grokbot-Hackathon/pull/4) added an Intro CS deck and the route tests. On that pull request, `npm test` passed with 59 tests and `npm run build` passed before the merge.
 
 ## How we built it (tech stack)
 
@@ -77,7 +76,9 @@ Declared in `package.json` on `main`:
 - zod 4 for the shared contract and for request validation on the API routes
 - Zustand 5, persisting decks and mastery to `localStorage` (`recall-store`)
 - Vitest 5 with Testing Library and jsdom
-- xAI Grok, planned behind the server-only env var `XAI_API_KEY`. The scaffold routes do not call it.
+- `@openai/apps-sdk-ui` 0.2, used by the screens merged in PR #2
+- Claude Sonnet 5.5, model id `claude-sonnet-5-5`, through `https://api.anthropic.com/v1/messages`. The server reads `ANTHROPIC_API_KEY`. This is the model the app keeps. It does not call the xAI Grok API.
+- Optional OpenAI fallback, model `gpt-5-mini`, through `https://api.openai.com/v1/responses`, only for `POST /api/extract` and `POST /api/question`, and only when `ANTHROPIC_API_KEY` is unset, `OPENAI_API_KEY` is set, and `DEMO_MODE` is not `fixtures`
 
 `next.config.ts` sets `cacheComponents` and `partialPrefetching`. No `vercel.json` is checked in. Next.js detects this app from the `build` and `start` scripts, and the deploying guide does not require a `vercel.json` for a Node server deploy.
 
@@ -89,38 +90,43 @@ flowchart TD
   extract --> deck["Deck of concepts"]
   deck --> session["Session: next concept, level 1 to 3, recent widgets"]
   session --> question["POST /api/question"]
-  question --> grok["xAI Grok, server-side, XAI_API_KEY"]
-  grok --> json["WidgetSpec JSON"]
-  json --> zod["zod discriminated union: 8 widgets"]
-  zod --> registry["src/widgets/registry.tsx"]
-  registry --> ui["multipleChoice, trueFalse, cloze, typeAnswer, matchPairs, orderSteps, slider, or explain"]
+  question --> mode{"Which model?"}
+  mode -->|ANTHROPIC_API_KEY set and DEMO_MODE unset| claude["Claude claude-sonnet-5-5"]
+  mode -->|only OPENAI_API_KEY| openai["OpenAI gpt-5-mini, extract and question"]
+  mode -->|DEMO_MODE=fixtures or no key| local["Local deck, local question, keyword grade"]
+  claude --> zod["zod discriminated union: 8 widgets"]
+  openai --> zod
+  local --> ui["Question on screen"]
+  zod --> ui
   ui --> answer["Student answer"]
   answer --> selfGrade["Seven widgets self-grade in the browser"]
   answer --> apiGrade["explain calls POST /api/grade"]
-  selfGrade --> result["AnswerResult: correct, score 0 to 1, feedback, missing"]
-  apiGrade --> result
+  apiGrade --> gradeMode{"ANTHROPIC_API_KEY and not fixtures?"}
+  gradeMode -->|yes| claudeGrade["Claude grades the rubric"]
+  gradeMode -->|no| keyword["Keyword grader, pass at 0.7"]
+  selfGrade --> result["AnswerResult"]
+  claudeGrade --> result
+  keyword --> result
   result --> mastery["MasteryRecord: ease, intervalMs, dueAt, streak, history"]
   mastery --> session
 ```
 
-On `main`, the session and mastery boxes are the engine from PR #1. The extract, question, and grade boxes still return fixtures from `src/fixtures/`. The registry box is still the stub widget. The diagram is the contract those routes and widgets stand in for.
+On `main`, the session and mastery boxes are the engine from PR #1. Extract, question, and grade call Claude when `ANTHROPIC_API_KEY` is set and `DEMO_MODE` is not `fixtures`. The per-widget registry file is still the stub. Draft PR #5 is the widget UI that is not merged yet.
 
 ## Challenges we ran into
 
 Agent 1's merged pull request ([#1](https://github.com/bmealey2005/Grokbot-Hackathon/pull/1)) has a summary and scoring notes, and no separate "challenges" list.
 
+[PR #4](https://github.com/bmealey2005/Grokbot-Hackathon/pull/4) reports one challenge: a bad widget could break the study loop, so the question route retries once and then serves a local question.
+
 TODO:
 
-- Agent 1 challenges, if they add them
-- Agent 2 (components, widgets, pages): no pull request yet
-- Agent 3 (API routes, `aiClient`, fixtures): no pull request yet
+- Agent 2 challenges. Draft [PR #5](https://github.com/bmealey2005/Grokbot-Hackathon/pull/5) is open and not merged.
 - Measured Quizlet step counts, ads, and paywall notes: see [`docs/teardown/`](docs/teardown/README.md)
 
-Observed while writing this README, from the tree on `main`:
+The app stays on Claude. `main` does not call xAI, and `XAI_API_KEY` is not a variable the routes read. `.env.example` on `main` lists `ANTHROPIC_API_KEY`, optional `OPENAI_API_KEY`, and `DEMO_MODE`.
 
-- `.env.example` contains `XAI_API_KEY=` only. `DEMO_MODE` is part of the run instructions and is absent from that file. `.env.example` is outside Agent 4's files, so this branch leaves it unchanged.
-- The scaffold never reads `DEMO_MODE`. Running without a key works because the routes are fixtures, which is a different mechanism than the `DEMO_MODE=fixtures` switch described in the hackathon brief.
-- Cursor's Apps publish step is a person clicking Publish in the preview tray. This agent has no publish tool, no Vercel token, and no permission to set `XAI_API_KEY`.
+Cursor's Apps publish step is a person clicking Publish in the preview tray. This agent has no publish tool and no Vercel token, so it cannot set `ANTHROPIC_API_KEY`. The host has to.
 
 ## Accomplishments that we're proud of
 
@@ -129,7 +135,8 @@ From `main` after the scaffold and PR #1:
 - One shared zod contract for decks, the eight widgets, question envelopes, answer results, mastery records, and the three API bodies. A widget name outside that union fails `WidgetSpec` parsing. The fixture tests cover that case with `"diagram"`.
 - A stable sample deck, Cell Biology Basics, with 12 concepts whose `related` ids all point at other concepts in the deck.
 - One fixture spec for every widget, plus stub routes that validate input and return those fixtures.
-- A session loop with prefetch, a spaced-repetition scheduler, and a Zustand store that recovers from a corrupt `localStorage` save. `useSession()` is the hook Agent 2 renders against.
+- A session loop with prefetch, a spaced-repetition scheduler, and a Zustand store that recovers from a corrupt `localStorage` save. `useSession()` is the hook the study screen renders against.
+- Extract, question, and grade on Claude Sonnet 5.5, with `DEMO_MODE=fixtures` for a no-key run and an optional OpenAI `gpt-5-mini` path for extract and question.
 - The GitHub repo is public: https://github.com/bmealey2005/Grokbot-Hackathon
 
 TODO: the on-screen study loop, the live phone pass, and the notes from Agents 2 and 3.
@@ -161,7 +168,7 @@ The work is split across four cloud agents so the contract, the interface, the m
 | 3 Model | Agent 3's branch | `src/app/api/*`, `src/lib/aiClient.ts`, `src/fixtures` |
 | 4 Ship | `agent-4-ship` | This README, `docs/**`, `public/**`, deploy config |
 
-Agent 1's scaffold commit is `0873478` ("Scaffold Recall with the shared study contract."). The session engine landed in [PR #1](https://github.com/bmealey2005/Grokbot-Hackathon/pull/1), merge commit `f2d66b5`. That pull request was already merged when this branch was updated. Agent 2 has no remote branch and no pull request. `origin/agent-3-ai` exists and only changes `src/lib/aiClient.ts`; it has no pull request, so it was left unmerged. [PR #2](https://github.com/bmealey2005/Grokbot-Hackathon/pull/2) (`codex/recall-cursor-preview`, "Prepare Recall for Cursor Apps") is a separate preview branch, not Agent 2's interface pull request.
+Agent 1's scaffold commit is `0873478`. The session engine landed in [PR #1](https://github.com/bmealey2005/Grokbot-Hackathon/pull/1). [PR #2](https://github.com/bmealey2005/Grokbot-Hackathon/pull/2) merged the preview screens. [PR #4](https://github.com/bmealey2005/Grokbot-Hackathon/pull/4) merged the Claude routes. `main` is that merge, `abc00bb`. Agent 2's interface is draft [PR #5](https://github.com/bmealey2005/Grokbot-Hackathon/pull/5) (`agent-2-ui`) and is not merged.
 
 Session export: TODO. Teammate Grok Bot transcripts are not in the repo. The scrub checklist is [`docs/session-export/README.md`](docs/session-export/README.md). Link the scrubbed files from this section after a second teammate has checked them. Do not commit names, emails, phone numbers, or tokens.
 
@@ -182,18 +189,20 @@ npm run build
 
 `npm test` runs Vitest once. `npm run build` runs `next build`.
 
-**Without an xAI key.** On this scaffold, leave `XAI_API_KEY` empty. The API routes do not call the model. The intended offline switch, once Agent 3 reads it, is:
+`.env.example` on `main` lists `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, and `DEMO_MODE`. Copy it before filling in a key. Never commit `.env.local`.
+
+**No-key run.** Set `DEMO_MODE=fixtures`. Extract builds a local deck, question serves a local widget, and grade uses the keyword check. Claude and OpenAI are not called.
 
 ```bash
 DEMO_MODE=fixtures npm run dev
 ```
 
-That variable is not in `.env.example` and no file reads it yet. Adding it to `.env.example` belongs to whoever owns that file.
+**Live model.** Leave `DEMO_MODE` empty and set `ANTHROPIC_API_KEY`. Extract, question, and grade then call Claude Sonnet 5.5 (`claude-sonnet-5-5`). Optional `OPENAI_API_KEY` is used only when the Anthropic key is absent: extract and question call `gpt-5-mini`, and grade stays on the keyword fallback.
 
-**Where `XAI_API_KEY` has to be set.** Never commit it. `.env*` is gitignored except `.env.example`.
+**Where `ANTHROPIC_API_KEY` has to be set.** A person sets it on the host. This agent cannot.
 
-- Local: `.env.local`, copied from `.env.example`. This agent cannot create or fill that file with a real key.
-- Cursor Apps: the app's Secrets section in the [Apps dashboard](https://cursor.com/docs/cloud-agent/apps). Add a secret named `XAI_API_KEY`. The agent never sees the value. Optional `DEMO_MODE` can stay empty when a live key is present. Public sharing has to be on, or the link sits behind Cursor sign-in and fails the "no login wall" rule.
-- Vercel, if the repo is imported there: Project Settings, Environment Variables, `XAI_API_KEY` for Production (and Preview, if preview URLs should call the model). No `vercel.json` is required for this Next.js app.
+- Local: `.env.local`.
+- Cursor Apps: the app's Secrets section in the [Apps dashboard](https://cursor.com/docs/cloud-agent/apps). Add a secret named `ANTHROPIC_API_KEY`. The agent never sees the value. Leave `DEMO_MODE` empty when that key is present. Public sharing has to be on, or the link sits behind Cursor sign-in and fails the "no login wall" rule.
+- Vercel, if the repo is imported there: Project Settings, Environment Variables, `ANTHROPIC_API_KEY` for Production. Add `OPENAI_API_KEY` only if that fallback should run. No `vercel.json` is required for this Next.js app.
 
 After a deploy exists, confirm it from the host's dashboard. This branch does not have a live URL to check.
