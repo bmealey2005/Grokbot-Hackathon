@@ -63,4 +63,4 @@ OPENAI_API_KEY=          # OpenAI Responses API key
 RECALL_OPENAI_ACCESS_TOKEN=  # high-entropy Bearer token required before any paid call
 ```
 
-Callers must send `Authorization: Bearer <RECALL_OPENAI_ACCESS_TOKEN>`. Without that header, or if either value is unset, Recall stays on Local practice and never calls OpenAI.
+In Add a reading, open **OpenAI access** and enter the app access token. Recall keeps it in memory for the current page and sends it only to its own import and question endpoints. API callers can send `Authorization: Bearer <RECALL_OPENAI_ACCESS_TOKEN>`. Without valid access and both server secrets, Recall uses Local practice.

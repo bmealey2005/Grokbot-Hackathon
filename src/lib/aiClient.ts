@@ -7,6 +7,18 @@ import type {
   QuestionRequest,
 } from "./schema";
 
+let openAiAccessToken = "";
+
+export function setOpenAiAccessToken(token: string) {
+  openAiAccessToken = token.trim();
+}
+
+export function openAiRequestHeaders(): Headers {
+  const headers = new Headers({ "Content-Type": "application/json" });
+  if (openAiAccessToken) headers.set("Authorization", `Bearer ${openAiAccessToken}`);
+  return headers;
+}
+
 /**
  * Typed fetch wrappers for the study API.
  * Agent 3 owns timeouts, a single retry, and zod validation in this file.
@@ -15,7 +27,9 @@ import type {
 async function postJson<T>(url: string, body: unknown): Promise<T> {
   const response = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: url === "/api/question" || url === "/api/extract"
+      ? openAiRequestHeaders()
+      : { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
   if (!response.ok) {
