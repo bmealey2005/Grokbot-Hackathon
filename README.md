@@ -18,7 +18,7 @@ Start with **Cell Biology Basics**, paste your notes, or upload a `.txt` or `.md
 
 Recall uses Next.js, React, TypeScript, and Tailwind CSS, with OpenAI Apps SDK UI buttons. A shared Zod contract validates study decks and question formats. React renders each format with its own controls. The session engine prioritizes concepts due for review, then picks the weakest one when none are due. Zustand persists the library and mastery in the browser.
 
-The Next.js API extracts concepts from the reading, builds questions, and grades written answers against a rubric. Imports are labeled **Local practice**. The current generation and grading paths use rule-based logic and require no model key.
+The Next.js API extracts concepts, builds questions, and grades written answers against a rubric. A server-side `XAI_API_KEY` enables Grok 4.7 for study maps and questions. When the key is absent or the model cannot return a valid result, Recall generates **Local practice** directly from the reading. Successful model-generated maps are labeled **Mapped with Grok**.
 
 ## Challenges we ran into
 
@@ -26,7 +26,7 @@ The interface, scheduler, and API had to agree on how an activity is represented
 
 ## Accomplishments
 
-We built a configurable question renderer, a reading library with text and file import, a concept map with source evidence, and a study loop with per-concept results. The same flow works with the included sample and with the learner’s own notes.
+We built a configurable question renderer, a reading library with text and file import, a concept map with source evidence, and a study loop with per-concept results. We exercised both the sample and a second reading in desktop and phone browsers. The Grok integration passed tests with simulated provider responses. The event build uses Local practice.
 
 ## What we learned
 
@@ -34,7 +34,7 @@ A wider range of question formats is only useful when each format has a job. A s
 
 ## What’s next
 
-Add an optional Grok generation path alongside Local practice. Improve the grading of written explanations and test which activities best help students retain a concept over repeated sessions.
+Improve written-answer grading and test which activities help students retain a concept over repeated sessions.
 
 ## How Grok Bot helped build it
 
