@@ -138,6 +138,24 @@ describe("study API", () => {
     }
   });
 
+  it("masks a whole inflected answer and preserves unrelated words", async () => {
+    const concept = {
+      id: "imported-reserve",
+      term: "Reserve",
+      definition: "A visitor reserves an unreserved headset.",
+    };
+    const response = await question(new Request("http://localhost/api/question", {
+      method: "POST",
+      body: JSON.stringify({ concept, neighbors: [], level: 1, recentWidgets: [] }),
+    }));
+    const { spec } = QuestionEnvelopeSchema.parse(await response.json());
+    expect(spec.widget).toBe("typeAnswer");
+    if (spec.widget === "typeAnswer") {
+      expect(spec.props.prompt).toContain("A visitor ____ an unreserved headset.");
+      expect(spec.props.accepted).toEqual(["Reserve"]);
+    }
+  });
+
   it("POST /api/grade scores a free-text answer against the rubric", async () => {
     const response = await grade(
       new Request("http://localhost/api/grade", {

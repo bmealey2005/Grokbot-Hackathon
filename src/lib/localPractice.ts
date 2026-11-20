@@ -93,7 +93,9 @@ export function buildLocalQuestion(request: QuestionRequest): QuestionEnvelope {
   }
 
   const escapedTerm = concept.term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const cue = concept.definition.replace(new RegExp(escapedTerm, "giu"), "____");
+  const wordBoundary = "[\\p{L}\\p{M}\\p{N}]";
+  const answerWords = new RegExp(`(?<!${wordBoundary})${escapedTerm}(?:ing|ed|es|s)?(?!${wordBoundary})`, "giu");
+  const cue = concept.definition.replace(answerWords, "____");
   const prompt = /[\p{L}\p{N}]/u.test(cue) ? `Which term matches this idea? ${cue}` : `Recall this part of the reading: ${concept.term}`;
   const recall: WidgetSpec = {
     widget: "typeAnswer",
