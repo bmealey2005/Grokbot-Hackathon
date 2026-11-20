@@ -4,6 +4,8 @@ Recall turns class notes into a study session that changes shape as you learn. P
 
 **Berkeley × Stanford Grok Bot Hackathon · Best Design**
 
+[Hackathon presentation](docs/Recall-deck.pdf)
+
 ## Inspiration
 
 Quizlet Practice Tests already turn notes into questions. We wanted the activity itself to match the idea a student is trying to remember. Ordering tests a sequence, matching tests distinctions, and explaining an idea asks the learner to reconstruct it. [Quizlet Practice Tests](https://help.quizlet.com/hc/en-us/articles/25946589648013-Studying-with-Practice-Tests)

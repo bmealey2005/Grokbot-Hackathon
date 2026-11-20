@@ -245,7 +245,7 @@ export function RecallStudy({ deckId }: { deckId: string }) {
       {!current ? <section className="recall-reading">
         {isLoading ? <p role="status" className="recall-loading">Loading practice…</p> : <h1>Reading not found</h1>}
         {!isLoading && <Link href="/">Back to the library</Link>}
-      </section> : <Question key={`${progress.answered}-${current.concept.id}`} current={current} isLoading={isLoading}
+      </section> : <Question key={current.id} current={current} isLoading={isLoading}
         finish={progress.answered + 1 >= total} onContinue={(result) => {
           submit(result);
           if (progress.answered + 1 >= total) router.push(`/results/${encodeURIComponent(deckId)}`);
