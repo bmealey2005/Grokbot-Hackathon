@@ -4,7 +4,7 @@ Recall turns class notes into a study session that changes shape as you learn. P
 
 **Berkeley × Stanford Grok Bot Hackathon · Best Design**
 
-[Hackathon presentation](docs/Recall-deck.pdf)
+[Live app](https://recall.apps.grok.bot) · [Hackathon presentation](docs/Recall-deck.pdf)
 
 ## Inspiration
 
@@ -18,7 +18,7 @@ Start with **Cell Biology Basics**, paste your notes, or upload a `.txt` or `.md
 
 Recall uses Next.js, React, TypeScript, and Tailwind CSS, with OpenAI Apps SDK UI buttons. A shared Zod contract validates study decks and question formats. React renders each format with its own controls. The session engine prioritizes concepts due for review, then picks the weakest one when none are due. Zustand persists the library and mastery in the browser.
 
-The Next.js API extracts concepts, builds questions, and grades written answers against a rubric. A server-side `OPENAI_API_KEY` enables `gpt-5-mini` through the OpenAI Responses API for study maps and questions. When the key is absent or the model cannot return a valid result, Recall generates **Local practice** directly from the reading. Successful model-generated maps are labeled **Mapped with OpenAI**.
+The Next.js API extracts concepts, builds questions, and grades written answers against a rubric. Anonymous import and practice always use deterministic **Local practice** from the reading. Optional OpenAI generation requires two server-only settings: `OPENAI_API_KEY` and a separate high-entropy `RECALL_OPENAI_ACCESS_TOKEN`. Paid inference runs only when the request presents that access token as a `Bearer` credential; missing or invalid auth falls back to Local practice. Successful model-generated maps are labeled **Mapped with OpenAI**.
 
 ## Challenges we ran into
 
@@ -56,4 +56,11 @@ npm run build
 npm start
 ```
 
-For optional OpenAI generation, set `OPENAI_API_KEY` in the server environment. Recall sends relevant reading excerpts to OpenAI when this setting is enabled. Local practice works without configuration.
+Local practice works without configuration. For optional authenticated OpenAI generation, set both server-only values in the environment (never in client code or the repo):
+
+```sh
+OPENAI_API_KEY=          # OpenAI Responses API key
+RECALL_OPENAI_ACCESS_TOKEN=  # high-entropy Bearer token required before any paid call
+```
+
+In Add a reading, open **OpenAI access** and enter the app access token. Recall keeps it in memory for the current page and sends it only to its own import and question endpoints. API callers can send `Authorization: Bearer <RECALL_OPENAI_ACCESS_TOKEN>`. Without valid access and both server secrets, Recall uses Local practice.

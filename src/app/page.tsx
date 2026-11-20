@@ -1,11 +1,5 @@
-import type { Metadata } from "next";
-import { HomeScreen } from "./HomeScreen";
-
-export const metadata: Metadata = {
-  title: "Make a quiz",
-  description: "Paste your notes. Recall turns them into questions that change as you learn.",
-};
+import { RecallLibrary } from "@/components/recall-ui";
 
 export default function Home() {
-  return <HomeScreen />;
+  return <RecallLibrary />;
 }

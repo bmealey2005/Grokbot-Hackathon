@@ -4,9 +4,18 @@ import { POST as question } from "./question/route";
 
 const reading = "A hold request reserves a book for pickup at the selected branch.";
 const concept = { id: "hold", term: "Hold request", definition: reading, facts: [reading], related: [] };
+const accessToken = "recall-access-token-for-tests-only";
 
-function post(route: string, data: unknown) {
-  return new Request(`http://localhost/api/${route}`, { method: "POST", body: JSON.stringify(data) });
+function post(route: string, data: unknown, headers?: HeadersInit) {
+  return new Request(`http://localhost/api/${route}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...headers },
+    body: JSON.stringify(data),
+  });
+}
+
+function authorized(route: string, data: unknown) {
+  return post(route, data, { Authorization: `Bearer ${accessToken}` });
 }
 
 function modelResult(data: unknown) {
@@ -24,16 +33,35 @@ afterEach(() => {
 describe("optional OpenAI study routes", () => {
   it("uses local text and skips external requests without a configured key", async () => {
     vi.stubEnv("OPENAI_API_KEY", "");
+    vi.stubEnv("RECALL_OPENAI_ACCESS_TOKEN", accessToken);
     const call = vi.fn();
     vi.stubGlobal("fetch", call);
-    const response = await extract(post("extract", { text: reading }));
+    const response = await extract(authorized("extract", { text: reading }));
     expect(response.headers.get("x-recall-mode")).toBe("local");
     expect((await response.json()).deck.concepts[0].facts).toEqual([reading]);
     expect(call).not.toHaveBeenCalled();
   });
 
+  it("never invokes OpenAI for anonymous callers even when the API key is configured", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "mock-openai-key");
+    vi.stubEnv("RECALL_OPENAI_ACCESS_TOKEN", accessToken);
+    const call = vi.fn();
+    vi.stubGlobal("fetch", call);
+
+    const extracted = await extract(post("extract", { text: reading }));
+    expect(extracted.headers.get("x-recall-mode")).toBe("local");
+    expect((await extracted.json()).deck.concepts[0].facts).toEqual([reading]);
+
+    const asked = await question(post("question", { concept, neighbors: [], level: 1, recentWidgets: [] }));
+    expect(asked.headers.get("x-recall-mode")).toBe("local");
+    expect((await asked.json()).conceptIds).toEqual([concept.id]);
+
+    expect(call).not.toHaveBeenCalled();
+  });
+
   it("uses the OpenAI Responses schema and attaches literal supporting evidence", async () => {
     vi.stubEnv("OPENAI_API_KEY", "mock-token");
+    vi.stubEnv("RECALL_OPENAI_ACCESS_TOKEN", accessToken);
     const call = vi.fn(async (_url: string, init: RequestInit) => {
       const payload = JSON.parse(String(init.body));
       expect(payload.model).toBe("gpt-5-mini");
@@ -43,7 +71,7 @@ describe("optional OpenAI study routes", () => {
       return modelResult({ concepts: [{ term: "Library hold", definition: "Reserves a library book.", passage: 0 }] });
     });
     vi.stubGlobal("fetch", call);
-    const response = await extract(post("extract", { text: reading, title: "Readings" }));
+    const response = await extract(authorized("extract", { text: reading, title: "Readings" }));
     expect(response.status).toBe(200);
     expect(response.headers.get("x-recall-mode")).toBe("ai");
     expect((await response.json()).deck.concepts[0]).toMatchObject({ term: "Library hold", facts: [reading] });
@@ -53,6 +81,7 @@ describe("optional OpenAI study routes", () => {
 
   it("uses a valid model widget and falls back when its answer cannot be graded", async () => {
     vi.stubEnv("OPENAI_API_KEY", "mock-token");
+    vi.stubEnv("RECALL_OPENAI_ACCESS_TOKEN", accessToken);
     const call = vi.fn()
       .mockResolvedValueOnce(modelResult({ spec: { widget: "trueFalse", props: {
         statement: "A hold request reserves a book for pickup.", answer: true, explanation: reading,
@@ -62,13 +91,13 @@ describe("optional OpenAI study routes", () => {
       } } }));
     vi.stubGlobal("fetch", call);
     const request = { concept, neighbors: [], level: 1, recentWidgets: [] };
-    const accepted = await question(post("question", request));
+    const accepted = await question(authorized("question", request));
     expect(accepted.headers.get("x-recall-mode")).toBe("ai");
     expect(await accepted.json()).toMatchObject({ conceptIds: [concept.id], spec: { widget: "trueFalse" } });
     const payload = JSON.parse(String(call.mock.calls[0][1].body));
     expect(payload.text.format.type).toBe("json_object");
     expect(payload.input[0].content).toContain("Return a JSON object matching this schema");
-    const recovered = await question(post("question", request));
+    const recovered = await question(authorized("question", request));
     expect(recovered.headers.get("x-recall-mode")).toBe("local");
     expect(await recovered.json()).toMatchObject({ conceptIds: [concept.id], spec: { widget: "typeAnswer" } });
   });

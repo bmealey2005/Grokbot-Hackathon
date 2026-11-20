@@ -1,27 +1,49 @@
-import { ANSWER_CHAR_LIMIT, ANSWER_TOO_LONG } from "@/lib/ai/config";
-import { gradeSubmittedAnswer, heuristicGrade } from "@/lib/ai/grade";
-import { jsonError, logRoute, readJson } from "@/lib/ai/route-log";
-import { GradeRequest } from "@/lib/schema";
+import { AnswerResultSchema, GradeRequest } from "@/lib/schema";
+import type { AnswerResult } from "@/lib/schema";
+import { invalidJson, readJson } from "../readJson";
 
-/** Rubric grading. Paraphrases count. A model failure falls back to the keyword grader. */
 export async function POST(request: Request) {
-  const started = Date.now();
-  const body = await readJson(request);
-  if (body === undefined) return jsonError(400, "Invalid JSON");
+  let body: unknown;
+  try {
+    body = await readJson(request, 260_000);
+  } catch (error) {
+    return invalidJson(error);
+  }
 
   const parsed = GradeRequest.safeParse(body);
-  if (!parsed.success) return jsonError(400, "Invalid request");
-  if (parsed.data.answer.length > ANSWER_CHAR_LIMIT) return jsonError(400, ANSWER_TOO_LONG);
-
-  const apiKey = process.env.ANTHROPIC_API_KEY?.trim() || undefined;
-  const demoFixtures = process.env.DEMO_MODE === "fixtures";
-  try {
-    const graded = await gradeSubmittedAnswer(parsed.data, { apiKey, demoFixtures });
-    logRoute("POST /api/grade", started, graded.source);
-    return Response.json(graded.result, { headers: { "Cache-Control": "no-store" } });
-  } catch (error) {
-    console.info("[recall] POST /api/grade failed", error instanceof Error ? error.message : error);
-    logRoute("POST /api/grade", started, "heuristic-fallback");
-    return Response.json(heuristicGrade(parsed.data), { headers: { "Cache-Control": "no-store" } });
+  if (!parsed.success) {
+    return Response.json({ error: "Invalid request" }, { status: 400 });
   }
+
+  const rubric = parsed.data.rubric.map((point) => point.trim()).filter(Boolean);
+  const answer = parsed.data.answer.trim();
+  if (!answer || !rubric.length) {
+    return Response.json({ error: "A response and a grading rubric are required" }, { status: 400 });
+  }
+
+  const words = new Set(keywords(answer));
+  const missing = rubric.filter((point) => !pointHits(point, words, answer));
+  const score = (rubric.length - missing.length) / rubric.length;
+  const correct = score >= 0.8;
+  const result = {
+    correct,
+    score,
+    feedback: correct ? "Your answer matched the rubric's key terms." : "Compare your answer with the points below.",
+    missing,
+  } satisfies AnswerResult;
+
+  return Response.json(AnswerResultSchema.parse(result));
+}
+
+const skipped = new Set(["through", "which", "where", "their", "these", "there", "about", "would", "could", "should", "while"]);
+
+function keywords(text: string): string[] {
+  const words = text.toLocaleLowerCase().match(/[\p{L}\p{N}]{4,}/gu) ?? [];
+  return words.filter((word) => !skipped.has(word)).map((word) => word.replace(/^(.{4,}?)(?:ing|ed|es|s)$/u, "$1"));
+}
+
+function pointHits(point: string, words: Set<string>, answer: string): boolean {
+  const required = [...new Set(keywords(point))];
+  if (!required.length) return answer.toLocaleLowerCase().includes(point.toLocaleLowerCase());
+  return required.filter((word) => words.has(word)).length >= Math.ceil(required.length * 0.6);
 }

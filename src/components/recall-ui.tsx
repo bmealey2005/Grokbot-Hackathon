@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, type ReactNode, type Ref, useRef, useState, useSyncExternalStore } from "react";
 import { sampleDeck } from "@/fixtures";
+import { openAiRequestHeaders, setOpenAiAccessToken } from "@/lib/aiClient";
 import { ExtractResponse, type Deck, type Concept } from "@/lib/schema";
 import { masteryPercent } from "@/lib/scheduler";
 import { useRecallStore } from "@/lib/store";
@@ -119,7 +120,7 @@ function ImportReading({ onImport, onCancel }: { onImport: (deck: Deck) => void;
     try {
       const response = await fetch("/api/extract", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: openAiRequestHeaders(),
         body: JSON.stringify({ title: title.trim() || undefined, text: text.trim() }),
         signal: AbortSignal.timeout(15_000),
       });
@@ -143,6 +144,10 @@ function ImportReading({ onImport, onCancel }: { onImport: (deck: Deck) => void;
         <label>Reading title <input value={title} maxLength={120} onChange={(event) => setTitle(event.target.value)} placeholder="Give your reading a title" /></label>
         <label>Reading text <textarea ref={reading} value={text} maxLength={MAX_NOTE_LENGTH} onChange={(event) => setText(event.target.value)} placeholder="Paste your notes here" rows={8} /></label>
         <label className="recall-file">Upload a text file <input type="file" accept=".txt,.md,text/plain,text/markdown" onChange={(event) => void addFile(event.target.files?.[0])} /></label>
+        <details>
+          <summary>OpenAI access</summary>
+          <label>App access token <input type="password" autoComplete="off" onChange={(event) => setOpenAiAccessToken(event.target.value)} /></label>
+        </details>
         {error && <p className="recall-error" role="alert">{error}</p>}
         <div className="recall-actions"><Action loading={loading} disabled={loading} type="submit">{loading ? "Creating study map…" : "Create study map"}<Icon kind="arrow" /></Action><Action type="button" className="recall-secondary" onClick={onCancel}>Cancel</Action></div>
       </form>
