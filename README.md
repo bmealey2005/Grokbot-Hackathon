@@ -161,7 +161,7 @@ The work is split across four cloud agents so the contract, the interface, the m
 | 3 Model | Agent 3's branch | `src/app/api/*`, `src/lib/aiClient.ts`, `src/fixtures` |
 | 4 Ship | `agent-4-ship` | This README, `docs/**`, `public/**`, deploy config |
 
-Agent 1's scaffold commit is `0873478` ("Scaffold Recall with the shared study contract."). The session engine landed in [PR #1](https://github.com/bmealey2005/Grokbot-Hackathon/pull/1), merge commit `f2d66b5`. That pull request was already merged when this branch was updated. Agents 2 and 3 have no remote branch and no pull request yet.
+Agent 1's scaffold commit is `0873478` ("Scaffold Recall with the shared study contract."). The session engine landed in [PR #1](https://github.com/bmealey2005/Grokbot-Hackathon/pull/1), merge commit `f2d66b5`. That pull request was already merged when this branch was updated. Agent 2 has no remote branch and no pull request. `origin/agent-3-ai` exists and only changes `src/lib/aiClient.ts`; it has no pull request, so it was left unmerged. [PR #2](https://github.com/bmealey2005/Grokbot-Hackathon/pull/2) (`codex/recall-cursor-preview`, "Prepare Recall for Cursor Apps") is a separate preview branch, not Agent 2's interface pull request.
 
 Session export: TODO. Teammate Grok Bot transcripts are not in the repo. The scrub checklist is [`docs/session-export/README.md`](docs/session-export/README.md). Link the scrubbed files from this section after a second teammate has checked them. Do not commit names, emails, phone numbers, or tokens.
 
