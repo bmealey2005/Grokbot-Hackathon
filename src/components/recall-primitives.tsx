@@ -2,8 +2,8 @@
 
 import { Button, type ButtonProps } from "@openai/apps-sdk-ui/components/Button";
 
-export function Action({ className = "", ...props }: Omit<ButtonProps, "color" | "pill">) {
-  return <Button color="primary" pill={false} size="2xl" className={`recall-action ${className}`} {...props} />;
+export function Action({ className = "", children, ...props }: Omit<ButtonProps, "color" | "pill">) {
+  return <Button color="primary" pill={false} size="2xl" className={`recall-action ${className}`} {...props}><span className="recall-action-content">{children}</span></Button>;
 }
 
 export function Icon({ kind }: { kind: "arrow" | "book" | "check" | "plus" | "up" | "down" }) {
