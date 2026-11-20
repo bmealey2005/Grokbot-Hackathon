@@ -18,7 +18,7 @@ Start with **Cell Biology Basics**, paste your notes, or upload a `.txt` or `.md
 
 Recall uses Next.js, React, TypeScript, and Tailwind CSS, with OpenAI Apps SDK UI buttons. A shared Zod contract validates study decks and question formats. React renders each format with its own controls. The session engine prioritizes concepts due for review, then picks the weakest one when none are due. Zustand persists the library and mastery in the browser.
 
-The Next.js API extracts concepts, builds questions, and grades written answers against a rubric. A server-side `XAI_API_KEY` enables Grok 4.7 for study maps and questions. When the key is absent or the model cannot return a valid result, Recall generates **Local practice** directly from the reading. Successful model-generated maps are labeled **Mapped with Grok**.
+The Next.js API extracts concepts, builds questions, and grades written answers against a rubric. A server-side `OPENAI_API_KEY` enables `gpt-5-mini` through the OpenAI Responses API for study maps and questions. When the key is absent or the model cannot return a valid result, Recall generates **Local practice** directly from the reading. Successful model-generated maps are labeled **Mapped with OpenAI**.
 
 ## Challenges we ran into
 
@@ -26,7 +26,7 @@ The interface, scheduler, and API had to agree on how an activity is represented
 
 ## Accomplishments
 
-We built a configurable question renderer, a reading library with text and file import, a concept map with source evidence, and a study loop with per-concept results. We exercised both the sample and a second reading in desktop and phone browsers. The Grok integration passed tests with simulated provider responses. The event build uses Local practice.
+We built a configurable question renderer, a reading library with text and file import, a concept map with source evidence, and a study loop with per-concept results. We exercised both the sample and a second reading in desktop and phone browsers. The OpenAI integration passed tests with simulated provider responses. The event build uses Local practice.
 
 ## What we learned
 
@@ -55,3 +55,5 @@ Open [http://localhost:3000](http://localhost:3000). Run `npm test` for tests an
 npm run build
 npm start
 ```
+
+For optional OpenAI generation, set `OPENAI_API_KEY` in the server environment. Recall sends relevant reading excerpts to OpenAI when this setting is enabled. Local practice works without configuration.

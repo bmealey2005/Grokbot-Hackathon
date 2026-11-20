@@ -21,9 +21,9 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("optional Grok study routes", () => {
+describe("optional OpenAI study routes", () => {
   it("uses local text and skips external requests without a configured key", async () => {
-    vi.stubEnv("XAI_API_KEY", "");
+    vi.stubEnv("OPENAI_API_KEY", "");
     const call = vi.fn();
     vi.stubGlobal("fetch", call);
     const response = await extract(post("extract", { text: reading }));
@@ -32,13 +32,14 @@ describe("optional Grok study routes", () => {
     expect(call).not.toHaveBeenCalled();
   });
 
-  it("calls the Grok responses schema and attaches literal supporting evidence", async () => {
-    vi.stubEnv("XAI_API_KEY", "mock-token");
+  it("uses the OpenAI Responses schema and attaches literal supporting evidence", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "mock-token");
     const call = vi.fn(async (_url: string, init: RequestInit) => {
       const payload = JSON.parse(String(init.body));
-      expect(payload.model).toBe("grok-4.7");
+      expect(payload.model).toBe("gpt-5-mini");
       expect(payload.store).toBe(false);
       expect(payload.text.format.type).toBe("json_schema");
+      expect(payload.text.format.strict).toBe(true);
       return modelResult({ concepts: [{ term: "Library hold", definition: "Reserves a library book.", passage: 0 }] });
     });
     vi.stubGlobal("fetch", call);
@@ -47,11 +48,11 @@ describe("optional Grok study routes", () => {
     expect(response.headers.get("x-recall-mode")).toBe("ai");
     expect((await response.json()).deck.concepts[0]).toMatchObject({ term: "Library hold", facts: [reading] });
     expect(call).toHaveBeenCalledOnce();
-    expect(call.mock.calls[0][0]).toBe("https://api.x.ai/v1/responses");
+    expect(call.mock.calls[0][0]).toBe("https://api.openai.com/v1/responses");
   });
 
   it("uses a valid model widget and falls back when its answer cannot be graded", async () => {
-    vi.stubEnv("XAI_API_KEY", "mock-token");
+    vi.stubEnv("OPENAI_API_KEY", "mock-token");
     const call = vi.fn()
       .mockResolvedValueOnce(modelResult({ spec: { widget: "trueFalse", props: {
         statement: "A hold request reserves a book for pickup.", answer: true, explanation: reading,
@@ -64,6 +65,9 @@ describe("optional Grok study routes", () => {
     const accepted = await question(post("question", request));
     expect(accepted.headers.get("x-recall-mode")).toBe("ai");
     expect(await accepted.json()).toMatchObject({ conceptIds: [concept.id], spec: { widget: "trueFalse" } });
+    const payload = JSON.parse(String(call.mock.calls[0][1].body));
+    expect(payload.text.format.type).toBe("json_object");
+    expect(payload.input[0].content).toContain("Return a JSON object matching this schema");
     const recovered = await question(post("question", request));
     expect(recovered.headers.get("x-recall-mode")).toBe("local");
     expect(await recovered.json()).toMatchObject({ conceptIds: [concept.id], spec: { widget: "typeAnswer" } });

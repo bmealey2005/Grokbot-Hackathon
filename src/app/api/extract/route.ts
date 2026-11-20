@@ -1,6 +1,6 @@
 import { buildLocalDeck, MAX_SOURCE_LENGTH } from "@/lib/localPractice";
 import { ExtractRequest, ExtractResponse } from "@/lib/schema";
-import { grokDeck } from "../grok";
+import { openAiDeck } from "../openai";
 import { invalidJson, readJson } from "../readJson";
 
 export async function POST(request: Request) {
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
 
   const local = buildLocalDeck(text, title);
   if (!local.concepts.length) return Response.json({ error: "Add a sentence or note to generate practice" }, { status: 400 });
-  const generated = await grokDeck(local);
+  const generated = await openAiDeck(local);
   return Response.json(ExtractResponse.parse({ deck: generated ?? local }), {
     headers: { "Cache-Control": "no-store", "X-Recall-Mode": generated ? "ai" : "local" },
   });

@@ -1,6 +1,6 @@
 import { buildLocalQuestion } from "@/lib/localPractice";
 import { QuestionEnvelopeSchema, QuestionRequest } from "@/lib/schema";
-import { grokQuestion } from "../grok";
+import { openAiQuestion } from "../openai";
 import { invalidJson, readJson } from "../readJson";
 
 export async function POST(request: Request) {
@@ -21,7 +21,7 @@ export async function POST(request: Request) {
   }
 
   const local = buildLocalQuestion(parsed.data);
-  const generated = await grokQuestion(parsed.data, local);
+  const generated = await openAiQuestion(parsed.data, local);
   return Response.json(QuestionEnvelopeSchema.parse(generated ?? local), {
     headers: { "Cache-Control": "no-store", "X-Recall-Mode": generated ? "ai" : "local" },
   });
