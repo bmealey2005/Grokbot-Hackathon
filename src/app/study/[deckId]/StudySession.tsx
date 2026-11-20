@@ -10,7 +10,7 @@ import { QuestionConceptProvider } from "@/widgets/QuestionContext";
 import { renderWidget } from "@/widgets/registry";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export function StudySession({ deckId }: { deckId: string }) {
   const { current, submit, progress, isLoading } = useSession(deckId);
@@ -18,17 +18,27 @@ export function StudySession({ deckId }: { deckId: string }) {
   const mounted = useMounted();
   const reduce = useReducedMotion();
   const [pending, setPending] = useState<AnswerResult | null>(null);
-  const [seen, setSeen] = useState(0);
   const [notice, setNotice] = useState<string | null>(null);
   const guard = useRef(false);
-  const waitingForNext = progress.answered !== seen;
+  const questionKey = current ? `${progress.answered}:${current.concept.id}:${current.envelope.spec.widget}` : "loading";
+
+  const continueNext = useCallback(() => {
+    if (!pending || !current || guard.current) return;
+    guard.current = true;
+    appendSessionTurn(deckId, {
+      widget: current.envelope.spec.widget,
+      score: pending.score,
+      correct: pending.correct || pending.score >= 0.8,
+      at: Date.now(),
+    });
+    setNotice(null);
+    setPending(null);
+    submit(pending);
+  }, [pending, current, deckId, submit]);
 
   useEffect(() => {
-    if (!isLoading && waitingForNext) {
-      guard.current = false;
-      setSeen(progress.answered);
-    }
-  }, [isLoading, waitingForNext, progress.answered]);
+    if (!isLoading) guard.current = false;
+  }, [isLoading, questionKey]);
 
   useEffect(() => {
     if (!pending) return;
@@ -39,25 +49,10 @@ export function StudySession({ deckId }: { deckId: string }) {
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  });
-
-  function continueNext() {
-    if (!pending || !current || guard.current) return;
-    guard.current = true;
-    appendSessionTurn(deckId, {
-      widget: current.envelope.spec.widget,
-      score: pending.score,
-      correct: pending.correct || pending.score >= 0.8,
-      at: Date.now(),
-    });
-    const result = pending;
-    setNotice(null);
-    setPending(null);
-    submit(result);
-  }
+  }, [pending, continueNext]);
 
   function report() {
-    if (!current || pending || waitingForNext || guard.current) return;
+    if (!current || pending || isLoading || guard.current) return;
     guard.current = true;
     appendSessionTurn(deckId, {
       widget: current.envelope.spec.widget,
@@ -75,9 +70,8 @@ export function StudySession({ deckId }: { deckId: string }) {
     setPending(result);
   }
 
-  const showQuestion = Boolean(mounted && current && (pending || (!waitingForNext && !isLoading)));
-  const missing = Boolean(mounted && !current && !isLoading && !waitingForNext);
-  const questionKey = current ? `${progress.answered}:${current.concept.id}:${current.envelope.spec.widget}` : "loading";
+  const showQuestion = Boolean(mounted && current && (pending || !isLoading));
+  const missing = Boolean(mounted && !current && !isLoading);
   const tone = !pending ? "" : pending.correct || pending.score >= 0.8 ? "right" : pending.score > 0 ? "close" : "wrong";
 
   return (
@@ -105,7 +99,7 @@ export function StudySession({ deckId }: { deckId: string }) {
 
         {missing ? (
           <div className="mt-16">
-            <h2 className="font-display text-4xl tracking-tight">This deck isn't on this device.</h2>
+            <h2 className="font-display text-4xl tracking-tight">This deck is not on this device.</h2>
             <p className="mt-3 max-w-md leading-7 text-muted">
               Recall keeps decks in this browser. Paste your notes again, or start from the sample deck.
             </p>

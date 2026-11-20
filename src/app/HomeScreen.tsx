@@ -1,6 +1,6 @@
 "use client";
 
-import { extractDeck } from "@/lib/aiClient";
+import { StudyClientError, extractDeck } from "@/lib/aiClient";
 import type { Concept, Deck } from "@/lib/schema";
 import { SAMPLE_DECK_ID } from "@/fixtures";
 import { useRecallStore } from "@/lib/store";
@@ -42,8 +42,12 @@ export function HomeScreen() {
         title: title.trim() || response.deck.title,
       });
       setPhase("review");
-    } catch {
-      setError("Those notes didn't come through. Try again, or start with the sample deck.");
+    } catch (error) {
+      setError(
+        error instanceof StudyClientError
+          ? error.message
+          : "Those notes did not come through. Try again, or start with the sample deck.",
+      );
       setPhase("compose");
     }
   }
@@ -189,7 +193,7 @@ function Review({
       <div className="flex items-end justify-between gap-4">
         <div>
           <h2 className="font-display text-3xl tracking-tight">Check the concepts</h2>
-          <p className="mt-2 text-muted">Edit a term, or drop anything you don't want to study.</p>
+          <p className="mt-2 text-muted">Edit a term, or drop anything you do not want to study.</p>
         </div>
         <button type="button" className="min-h-11 shrink-0 text-sm font-medium text-accent" onClick={onBack}>
           Edit notes

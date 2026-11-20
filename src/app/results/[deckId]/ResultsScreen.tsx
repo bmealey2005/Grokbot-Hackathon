@@ -4,12 +4,13 @@ import { AppHeader, ConceptTile, ResultsSkeleton, buttonClassName } from "@/comp
 import { WIDGET_LABELS, formatDue } from "@/components/format";
 import { readSessionLog, type SessionTurn } from "@/components/sessionLog";
 import { useMounted } from "@/components/useMounted";
+import { useNow } from "@/components/useNow";
 import { sampleDeck } from "@/fixtures";
 import { masteryPercent } from "@/lib/scheduler";
-import type { Level } from "@/lib/schema";
+import type { Deck, Level } from "@/lib/schema";
 import { useRecallStore } from "@/lib/store";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 export function ResultsScreen({ deckId }: { deckId: string }) {
   const mounted = useMounted();
@@ -25,33 +26,18 @@ export function ResultsScreen({ deckId }: { deckId: string }) {
 }
 
 function ResultsReady({ deckId }: { deckId: string }) {
-  const deck = useRecallStore((state) => state.decks.find((item) => item.id === deckId));
+  const stored = useRecallStore((state) => state.decks.find((item) => item.id === deckId));
+  const deck: Deck | undefined = stored ?? (deckId === sampleDeck.id ? sampleDeck : undefined);
   const mastery = useRecallStore((state) => state.mastery[deckId]);
   const [turns] = useState<SessionTurn[]>(() => readSessionLog(deckId));
-  const [looked, setLooked] = useState(false);
-
-  useEffect(() => {
-    if (deckId === sampleDeck.id) {
-      const state = useRecallStore.getState();
-      if (!state.decks.some((item) => item.id === deckId)) state.loadSampleDeck();
-    }
-    setLooked(true);
-  }, [deckId]);
+  const now = useNow();
 
   if (!deck) {
-    if (!looked || deckId === sampleDeck.id) {
-      return (
-        <main id="content" className="mx-auto min-h-dvh w-full max-w-5xl px-4 py-8 md:px-6">
-          <AppHeader />
-          <ResultsSkeleton />
-        </main>
-      );
-    }
     return (
       <main id="content" className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col px-4 py-8 md:px-6">
         <AppHeader />
         <h1 className="mt-16 font-display text-4xl tracking-tight">No results for this deck.</h1>
-        <p className="mt-3 max-w-md leading-7 text-muted">It isn't saved in this browser.</p>
+        <p className="mt-3 max-w-md leading-7 text-muted">It is not saved in this browser.</p>
         <Link href="/" className="mt-6 font-medium text-accent">
           Make a quiz
         </Link>
@@ -59,7 +45,6 @@ function ResultsReady({ deckId }: { deckId: string }) {
     );
   }
 
-  const now = Date.now();
   const graded = turns.filter((turn) => !turn.reported);
   const accuracy =
     graded.length === 0 ? null : Math.round((100 * graded.filter((turn) => turn.correct).length) / graded.length);
@@ -71,7 +56,7 @@ function ResultsReady({ deckId }: { deckId: string }) {
       term: concept.term,
       percent: record ? masteryPercent(record) : 0,
       level: (record?.level ?? 1) as Level,
-      dueLabel: record ? formatDue(record.dueAt, now) : "Not studied yet",
+      dueLabel: record && now > 0 ? formatDue(record.dueAt, now) : "Not studied yet",
     };
   });
 
@@ -79,10 +64,8 @@ function ResultsReady({ deckId }: { deckId: string }) {
     <main id="content" className="mx-auto min-h-dvh w-full max-w-5xl px-4 pt-6 pb-28 md:px-6 md:pt-10 md:pb-16">
       <AppHeader />
       <p className="mt-12 text-sm font-medium tracking-[0.16em] text-accent uppercase">{deck.title}</p>
-      <h1 className="mt-3 max-w-2xl font-display text-4xl tracking-tight md:text-6xl">What you'll remember</h1>
-      <p className="mt-4 max-w-xl text-lg leading-8 text-muted">
-        Strong ideas can wait. Shaky ones are due again soon.
-      </p>
+      <h1 className="mt-3 max-w-2xl font-display text-4xl tracking-tight md:text-6xl">What you will remember</h1>
+      <p className="mt-4 max-w-xl text-lg leading-8 text-muted">Strong ideas can wait. Shaky ones are due again soon.</p>
 
       <dl className="mt-8 grid grid-cols-3 gap-3">
         <Stat label="This session" value={accuracy === null ? "—" : `${accuracy}%`} />

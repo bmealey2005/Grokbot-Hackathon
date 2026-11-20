@@ -13,7 +13,7 @@ export default function Error({ error, retry }: { error: unknown; retry: () => v
     <main id="content" className="mx-auto flex min-h-dvh w-full max-w-xl flex-col px-4 py-8">
       <AppHeader />
       <h1 className="mt-16 font-display text-4xl tracking-tight">Something went wrong.</h1>
-      <p className="mt-3 leading-7 text-muted">The page didn't load. Your decks are still on this device.</p>
+      <p className="mt-3 leading-7 text-muted">The page did not load. Your decks are still on this device.</p>
       <div className="mt-6 flex flex-wrap gap-3">
         <Button type="button" onClick={() => retry()}>
           Try again

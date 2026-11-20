@@ -1,6 +1,6 @@
 "use client";
 
-import { gradeAnswer } from "@/lib/aiClient";
+import { StudyClientError, gradeAnswer } from "@/lib/aiClient";
 import type { Concept, WidgetProps, WidgetSpec } from "@/lib/schema";
 import { useState } from "react";
 import { Button } from "@/components/Button";
@@ -35,8 +35,8 @@ export function Explain({ spec, onSubmit }: Props) {
       });
       setMissing(result.missing ?? []);
       lockAndSubmit(result);
-    } catch {
-      setError("We couldn't grade that just now. Try once more.");
+    } catch (error) {
+      setError(error instanceof StudyClientError ? error.message : "We could not grade that just now. Try once more.");
     } finally {
       setGrading(false);
     }

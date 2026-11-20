@@ -3,7 +3,7 @@
 import type { WidgetProps, WidgetSpec } from "@/lib/schema";
 import { useState } from "react";
 import { Button } from "@/components/Button";
-import { ActionBar, Hint, Prompt } from "./ui";
+import { ActionBar, Hint } from "./ui";
 import { scoreBlanks } from "./grade";
 import { useLockingSubmit } from "./useLockingSubmit";
 
