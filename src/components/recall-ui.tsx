@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, type ReactNode, type Ref, useRef, useState, useSyncExternalStore } from "react";
 import { sampleDeck } from "@/fixtures";
 import { openAiRequestHeaders, setOpenAiAccessToken } from "@/lib/aiClient";
+import { MAX_NOTE_LENGTH } from "@/lib/noteText";
+import { readNotesFile } from "@/lib/readNotesFile";
 import { ExtractResponse, type Deck, type Concept } from "@/lib/schema";
 import { masteryPercent } from "@/lib/scheduler";
 import { useRecallStore } from "@/lib/store";
@@ -12,7 +14,6 @@ import { useSession } from "@/lib/useSession";
 import { Action, Icon } from "./recall-primitives";
 import { Question } from "./recall-question";
 
-const MAX_NOTE_LENGTH = 40_000;
 const SESSION_LENGTH = 6;
 const MASTERY_LABELS = ["", "Recognize", "Recall", "Apply"];
 
@@ -86,26 +87,15 @@ function ImportReading({ onImport, onCancel }: { onImport: (deck: Deck) => void;
   async function addFile(file: File | undefined) {
     if (!file) return;
     setError("");
-    if (!/\.(txt|md)$/i.test(file.name)) {
-      setError("Choose a .txt or .md file.");
+    const result = await readNotesFile(file);
+    if (!result.ok) {
+      setError(result.error);
       return;
     }
-    if (file.size > MAX_NOTE_LENGTH * 4) {
-      setError("Choose a reading under 40,000 characters.");
-      return;
-    }
-    try {
-      const contents = await file.text();
-      if (contents.length > MAX_NOTE_LENGTH) {
-        setError("Choose a reading under 40,000 characters.");
-        return;
-      }
-      setTitle(file.name.replace(/\.(txt|md)$/i, ""));
-      setText(contents);
-      reading.current?.focus();
-    } catch {
-      setError("The reading couldn’t be opened. You can paste its text instead.");
-    }
+    setTitle(result.title);
+    setText(result.text);
+    if (result.notice) setError(result.notice);
+    reading.current?.focus();
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -143,7 +133,7 @@ function ImportReading({ onImport, onCancel }: { onImport: (deck: Deck) => void;
       <form className="recall-import" onSubmit={submit}>
         <label>Reading title <input value={title} maxLength={120} onChange={(event) => setTitle(event.target.value)} placeholder="Give your reading a title" /></label>
         <label>Reading text <textarea ref={reading} value={text} maxLength={MAX_NOTE_LENGTH} onChange={(event) => setText(event.target.value)} placeholder="Paste your notes here" rows={8} /></label>
-        <label className="recall-file">Upload a text file <input type="file" accept=".txt,.md,text/plain,text/markdown" onChange={(event) => void addFile(event.target.files?.[0])} /></label>
+        <label className="recall-file">Upload notes (.pdf, .txt, .md) <input type="file" accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown" onChange={(event) => void addFile(event.target.files?.[0])} /></label>
         <details>
           <summary>OpenAI access</summary>
           <label>App access token <input type="password" autoComplete="off" onChange={(event) => setOpenAiAccessToken(event.target.value)} /></label>
