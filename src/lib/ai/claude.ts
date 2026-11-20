@@ -135,7 +135,7 @@ export async function callJSON<T>(
         body: JSON.stringify({
           model: opts.model ?? CLAUDE_MODEL,
           max_tokens: opts.maxCompletionTokens ?? 4096,
-          temperature: opts.temperature ?? 0.2,
+          // This model rejects a temperature field. Consistency is in the prompt instead.
           system,
           messages: [{ role: "user", content: userContent }],
           ...(forcePlainJson || !jsonSchema

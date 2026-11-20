@@ -29,7 +29,8 @@ Allowed widgets by mastery level:
 - Level 3, Apply: orderSteps only when the concept is a real sequence or process, slider only when the concept states a number, explain for why and how, and multipleChoice only as a short scenario that makes the student apply the idea.
 
 Quality rules:
-- Distractors are plausible, drawn from the neighbor concepts when any are provided, and similar in length and grammar to the correct answer.
+- Distractors are plausible, drawn from the neighbor concepts when any are provided, and similar in length and grammar to the correct answer. Every option must use the same shape. Do not tag only the wrong choices with phrases such as "on its own" or "only".
+- For trueFalse, do not copy the definition. Change one concrete detail, often using a neighbor, so a student who has not studied cannot tell the statement is true or false from the wording.
 - Never use "all of the above" or "none of the above".
 - The student must not be able to guess the answer from wording alone. Do not echo the definition beside only the correct option, and do not hide a unique keyword in the correct choice.
 - cloze text uses the marker {{blank}}. The number of {{blank}} markers equals answers.length. Each blank lists acceptable spellings.
