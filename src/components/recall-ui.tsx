@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type FormEvent, type ReactNode, useRef, useState, useSyncExternalStore } from "react";
+import { type FormEvent, type ReactNode, type Ref, useRef, useState, useSyncExternalStore } from "react";
 import { sampleDeck } from "@/fixtures";
 import { ExtractResponse, type Deck, type Concept } from "@/lib/schema";
 import { masteryPercent } from "@/lib/scheduler";
@@ -60,9 +60,9 @@ function Brand() {
   );
 }
 
-function Evidence({ concept, related = [], onSelect }: { concept: Concept; related?: Concept[]; onSelect?: (id: string) => void }) {
+function Evidence({ concept, related = [], onSelect, evidenceRef }: { concept: Concept; related?: Concept[]; onSelect?: (id: string) => void; evidenceRef?: Ref<HTMLElement> }) {
   return (
-    <aside className="recall-evidence" aria-label="Source evidence">
+    <aside ref={evidenceRef} className="recall-evidence" aria-label="Source evidence">
       <div className="recall-evidence-heading"><Icon kind="book" /><h2>Source evidence</h2></div>
       <h3>{concept.term}</h3>
       <p>{concept.definition}</p>
@@ -157,6 +157,13 @@ export function RecallLibrary() {
   const [selectedId, setSelectedId] = useState(sampleDeck.id);
   const [importing, setImporting] = useState(false);
   const [evidenceId, setEvidenceId] = useState<string | null>(null);
+  const evidenceRef = useRef<HTMLElement>(null);
+  function selectEvidence(id: string) {
+    setEvidenceId(id);
+    if (window.matchMedia("(max-width: 1000px)").matches) {
+      evidenceRef.current?.scrollIntoView({ block: "start" });
+    }
+  }
   const decks = [sampleDeck, ...savedDecks.filter((deck) => deck.id !== sampleDeck.id)];
   const selected = decks.find((deck) => deck.id === selectedId) ?? sampleDeck;
   const mode = usePracticeMode(selected.id);
@@ -195,13 +202,13 @@ export function RecallLibrary() {
               <section aria-labelledby="concept-map" className="recall-concepts">
                 <h2 id="concept-map">Concept map</h2>
                 <ul>
-                  {shownConcepts.map((concept) => <li key={concept.id}><button type="button" aria-pressed={concept.id === evidence?.id} onClick={() => setEvidenceId(concept.id)}>
+                  {shownConcepts.map((concept) => <li key={concept.id}><button type="button" aria-pressed={concept.id === evidence?.id} onClick={() => selectEvidence(concept.id)}>
                     <span className="recall-concept-point" /><span><strong>{concept.term}</strong><span className="recall-concept-definition">{concept.definition}</span></span><Icon kind="arrow" />
                   </button></li>)}
                 </ul>
                 {selected.concepts.length > shownConcepts.length && <p className="recall-caption">Practice covers all {selected.concepts.length} concepts.</p>}
               </section>
-              {evidence && <Evidence concept={evidence} related={related} onSelect={setEvidenceId} />}
+              {evidence && <Evidence concept={evidence} related={related} onSelect={selectEvidence} evidenceRef={evidenceRef} />}
             </div>
           </>
         )}
@@ -236,7 +243,7 @@ export function RecallStudy({ deckId }: { deckId: string }) {
         <progress max={total} value={Math.min(progress.answered, total)} aria-label="Practice progress" />
       </div>
       {!current ? <section className="recall-reading">
-        <h1>{isLoading ? "Loading practice…" : "Reading not found"}</h1>
+        {isLoading ? <p role="status" className="recall-loading">Loading practice…</p> : <h1>Reading not found</h1>}
         {!isLoading && <Link href="/">Back to the library</Link>}
       </section> : <Question key={`${progress.answered}-${current.concept.id}`} current={current} isLoading={isLoading}
         finish={progress.answered + 1 >= total} onContinue={(result) => {

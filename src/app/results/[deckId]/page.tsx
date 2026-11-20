@@ -1,6 +1,8 @@
 import { Suspense } from "react";
 import { RecallResults } from "@/components/recall-ui";
 
+export const metadata = { title: "Practice results | Recall" };
+
 async function ResultsBody({ params }: { params: Promise<{ deckId: string }> }) {
   const { deckId } = await params;
   return <RecallResults deckId={deckId} />;
