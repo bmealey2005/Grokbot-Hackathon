@@ -21,7 +21,7 @@ export async function POST(request: Request) {
   }
 
   const local = buildLocalQuestion(parsed.data);
-  const generated = await openAiQuestion(parsed.data, local);
+  const generated = await openAiQuestion(parsed.data, local, request);
   return Response.json(QuestionEnvelopeSchema.parse(generated ?? local), {
     headers: { "Cache-Control": "no-store", "X-Recall-Mode": generated ? "ai" : "local" },
   });

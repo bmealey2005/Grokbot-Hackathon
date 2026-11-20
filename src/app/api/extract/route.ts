@@ -24,7 +24,7 @@ export async function POST(request: Request) {
 
   const local = buildLocalDeck(text, title);
   if (!local.concepts.length) return Response.json({ error: "Add a sentence or note to generate practice" }, { status: 400 });
-  const generated = await openAiDeck(local);
+  const generated = await openAiDeck(local, request);
   return Response.json(ExtractResponse.parse({ deck: generated ?? local }), {
     headers: { "Cache-Control": "no-store", "X-Recall-Mode": generated ? "ai" : "local" },
   });

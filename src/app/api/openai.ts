@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { QuestionEnvelopeSchema, WidgetSpec, type Concept, type Deck, type QuestionEnvelope, type QuestionRequest } from "@/lib/schema";
 
@@ -26,6 +27,20 @@ function reserveRequest(now: number) {
   if (requestTimes.length >= 80 || requestTimes.filter((time) => time > now - 60_000).length >= 8) return false;
   requestTimes.push(now);
   return true;
+}
+
+/** Fail closed: OpenAI runs only when a Bearer matches RECALL_OPENAI_ACCESS_TOKEN. */
+export function isAuthorizedForOpenAi(request: Request): boolean {
+  const configured = process.env.RECALL_OPENAI_ACCESS_TOKEN?.trim();
+  if (!configured) return false;
+  const header = request.headers.get("authorization");
+  if (!header?.startsWith("Bearer ")) return false;
+  const presented = header.slice("Bearer ".length).trim();
+  if (!presented) return false;
+  const expected = Buffer.from(configured);
+  const actual = Buffer.from(presented);
+  if (expected.length !== actual.length) return false;
+  return timingSafeEqual(expected, actual);
 }
 
 async function openAiJson<S extends z.ZodType>(schema: S, instructions: string, data: unknown, strictSchemaName?: string): Promise<z.infer<S> | undefined> {
@@ -72,7 +87,8 @@ async function openAiJson<S extends z.ZodType>(schema: S, instructions: string, 
   }
 }
 
-export async function openAiDeck(local: Deck): Promise<Deck | undefined> {
+export async function openAiDeck(local: Deck, request: Request): Promise<Deck | undefined> {
+  if (!isAuthorizedForOpenAi(request)) return;
   const passages = local.concepts.map(({ facts }, index) => ({ index, text: facts[0] }));
   const result = await openAiJson(extracted,
     "Extract distinctive study concepts with short terms and self-contained definitions. Every definition must be supported by the supplied passage index. Use only those passages and do not repeat terms.",
@@ -93,9 +109,10 @@ export async function openAiDeck(local: Deck): Promise<Deck | undefined> {
   return { ...local, concepts };
 }
 
-export async function openAiQuestion(request: QuestionRequest, local: QuestionEnvelope): Promise<QuestionEnvelope | undefined> {
-  const { concept, level, recentWidgets } = request;
-  const concepts = [concept, ...request.neighbors.slice(0, 4)];
+export async function openAiQuestion(body: QuestionRequest, local: QuestionEnvelope, request: Request): Promise<QuestionEnvelope | undefined> {
+  if (!isAuthorizedForOpenAi(request)) return;
+  const { concept, level, recentWidgets } = body;
+  const concepts = [concept, ...body.neighbors.slice(0, 4)];
   const result = await openAiJson(questionResult,
     "Write one practice question about the first concept, using only the supplied evidence. Vary the widget with the level and avoid recently used widgets. Use only existing terms as matching labels. For ordering, use exactly the listed concept terms in the order supported by the passage. If order or numerical values are uncertain, choose another widget.",
     { level, recentWidgets: recentWidgets.slice(-6), concepts: concepts.map(({ term, definition, facts }) => ({ term, definition, passage: facts[0] })) },
