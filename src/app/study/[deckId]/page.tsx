@@ -14,6 +14,7 @@ export default function StudyPage({
 
 async function StudyBody({ params }: { params: Promise<{ deckId: string }> }) {
   const { deckId } = await params;
+  // Agent 2: const { current, submit, progress, isLoading } = useSession(deckId) from @/lib/useSession
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-6 py-16">
       <h1 className="text-3xl font-semibold tracking-tight">Study</h1>
