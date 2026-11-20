@@ -1,11 +1,21 @@
-import { envelopeFromFixture, sampleDeck } from "@/fixtures";
-import type { Concept, Deck, QuestionEnvelope, QuestionRequest, WidgetSpec } from "@/lib/schema";
+import { sampleDeck, widgetSpecs } from "@/fixtures";
+import type { Concept, Deck, Level, QuestionEnvelope, QuestionRequest, WidgetSpec } from "@/lib/schema";
 
 export const MAX_SOURCE_LENGTH = 40_000;
 const MAX_CONCEPTS = 24;
 const MAX_TITLE_LENGTH = 120;
 const headingPattern = /^(?:#{1,6}\s+|\d{1,3}[.)]\s+)(.+)$/;
 const numberedHeadingPattern = /^(\d{1,3})[.)]\s+/;
+const sampleQuestions: { level: Level; conceptIds: string[]; spec: WidgetSpec }[] = [
+  { level: 1, conceptIds: ["mitochondria"], spec: widgetSpecs.multipleChoice },
+  { level: 1, conceptIds: ["mitosis"], spec: widgetSpecs.trueFalse },
+  { level: 2, conceptIds: ["dna"], spec: widgetSpecs.cloze },
+  { level: 2, conceptIds: ["osmosis"], spec: widgetSpecs.typeAnswer },
+  { level: 2, conceptIds: ["mitochondria", "chloroplast", "ribosome", "nucleus"], spec: widgetSpecs.matchPairs },
+  { level: 3, conceptIds: ["mitosis"], spec: widgetSpecs.orderSteps },
+  { level: 3, conceptIds: ["atp"], spec: widgetSpecs.slider },
+  { level: 3, conceptIds: ["enzyme"], spec: widgetSpecs.explain },
+];
 
 function oneLine(text: string) {
   return text.replace(/\s+/g, " ").trim();
@@ -69,13 +79,12 @@ export function buildLocalDeck(text: string, title?: string): Deck {
 
 export function buildLocalQuestion(request: QuestionRequest): QuestionEnvelope {
   const { concept, level, neighbors, recentWidgets } = request;
-  if (sampleDeck.concepts.some((sample) => sample.id === concept.id && sample.definition === concept.definition)) {
-    return envelopeFromFixture(request);
-  }
+  const sample = sampleDeck.concepts.some((item) => item.id === concept.id && item.definition === concept.definition);
+  const curated = sample ? sampleQuestions.find((item) => item.level === level && item.conceptIds.includes(concept.id)) : undefined;
 
   const seen = new Set([concept.term.toLowerCase()]);
   const pool = [concept];
-  for (const neighbor of neighbors) {
+  for (const neighbor of sample ? [...neighbors, ...sampleDeck.concepts] : neighbors) {
     const term = neighbor.term.toLowerCase();
     if (!term || seen.has(term)) continue;
     seen.add(term);
@@ -90,7 +99,7 @@ export function buildLocalQuestion(request: QuestionRequest): QuestionEnvelope {
     widget: "typeAnswer",
     props: { prompt, accepted: [concept.term], explanation: concept.definition },
   };
-  const choices: WidgetSpec[] = [];
+  const choices: WidgetSpec[] = curated ? [curated.spec] : [];
   if (level === 1 && pool.length >= 3) {
     const options = pool.slice(1, 4).map((item) => item.term);
     const correctIndex = concept.term.length % (options.length + 1);
@@ -99,6 +108,16 @@ export function buildLocalQuestion(request: QuestionRequest): QuestionEnvelope {
       widget: "multipleChoice",
       props: { prompt, options, correctIndex, explanation: concept.definition },
     });
+  }
+
+  const other = pool.find((item) => item.definition !== concept.definition);
+  if (level === 1 && other) {
+    const answer = concept.term.length % 2 === 0;
+    choices.push({ widget: "trueFalse", props: {
+      statement: `${concept.term} fits this description: ${(answer ? concept : other).definition}`,
+      answer,
+      explanation: concept.definition,
+    } });
   }
 
   if (level === 3) {
@@ -116,7 +135,7 @@ export function buildLocalQuestion(request: QuestionRequest): QuestionEnvelope {
     }
   }
 
-  if (level >= 2 && pool.length >= 3 && new Set(pool.map((item) => item.definition)).size === pool.length) {
+  if (pool.length >= 3 && new Set(pool.map((item) => item.definition)).size === pool.length) {
     choices.push({ widget: "matchPairs", props: {
       prompt: `Match each idea to its description, including ${concept.term}.`,
       pairs: pool.map((item) => ({ left: item.term, right: item.definition })),
@@ -129,7 +148,7 @@ export function buildLocalQuestion(request: QuestionRequest): QuestionEnvelope {
   choices.push(recall);
 
   const spec = choices.find((choice) => !recentWidgets.includes(choice.widget)) ?? choices[recentWidgets.length % choices.length];
-  const conceptIds = spec.widget === "orderSteps"
+  const conceptIds = curated?.spec === spec ? curated.conceptIds : spec.widget === "orderSteps"
     ? pool.filter((item) => spec.props.steps.includes(item.term)).map((item) => item.id)
     : spec.widget === "matchPairs" ? pool.map((item) => item.id) : [concept.id];
   return { spec, level, conceptIds };

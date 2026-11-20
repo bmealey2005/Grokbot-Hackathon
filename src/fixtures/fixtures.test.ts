@@ -123,6 +123,21 @@ describe("study API", () => {
     expect(body.conceptIds).toEqual([concept.id]);
   });
 
+  it("keeps seeded questions aligned with the selected concept", async () => {
+    const concept = sampleDeck.concepts.find(({ id }) => id === "chloroplast")!;
+    const response = await question(new Request("http://localhost/api/question", {
+      method: "POST",
+      body: JSON.stringify({ concept, neighbors: [], level: 1, recentWidgets: ["multipleChoice"] }),
+    }));
+    const { conceptIds, spec } = QuestionEnvelopeSchema.parse(await response.json());
+    expect(conceptIds).toEqual(["chloroplast"]);
+    expect(spec.widget).toBe("trueFalse");
+    if (spec.widget === "trueFalse") {
+      expect(spec.props.statement).toContain(concept.term);
+      expect(spec.props.explanation).toBe(concept.definition);
+    }
+  });
+
   it("POST /api/grade scores a free-text answer against the rubric", async () => {
     const response = await grade(
       new Request("http://localhost/api/grade", {
