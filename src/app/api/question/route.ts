@@ -1,13 +1,14 @@
-import { envelopeFromFixture } from "@/fixtures";
+import { buildLocalQuestion } from "@/lib/localPractice";
 import { QuestionEnvelopeSchema, QuestionRequest } from "@/lib/schema";
+import { openAiQuestion } from "../openai";
+import { invalidJson, readJson } from "../readJson";
 
-/** Stub: returns a fixture widget for the requested level. Agent 3 replaces this. */
 export async function POST(request: Request) {
   let body: unknown;
   try {
-    body = await request.json();
-  } catch {
-    return Response.json({ error: "Invalid JSON" }, { status: 400 });
+    body = await readJson(request, 260_000);
+  } catch (error) {
+    return invalidJson(error);
   }
 
   const parsed = QuestionRequest.safeParse(body);
@@ -15,6 +16,13 @@ export async function POST(request: Request) {
     return Response.json({ error: "Invalid request" }, { status: 400 });
   }
 
-  const envelope = QuestionEnvelopeSchema.parse(envelopeFromFixture(parsed.data));
-  return Response.json(envelope);
+  if (!parsed.data.concept.term.trim() || !parsed.data.concept.definition.trim()) {
+    return Response.json({ error: "A concept needs a term and definition" }, { status: 400 });
+  }
+
+  const local = buildLocalQuestion(parsed.data);
+  const generated = await openAiQuestion(parsed.data, local);
+  return Response.json(QuestionEnvelopeSchema.parse(generated ?? local), {
+    headers: { "Cache-Control": "no-store", "X-Recall-Mode": generated ? "ai" : "local" },
+  });
 }

@@ -1,13 +1,14 @@
-import { sampleDeck } from "@/fixtures";
+import { buildLocalDeck, MAX_SOURCE_LENGTH } from "@/lib/localPractice";
 import { ExtractRequest, ExtractResponse } from "@/lib/schema";
+import { openAiDeck } from "../openai";
+import { invalidJson, readJson } from "../readJson";
 
-/** Stub: returns the sample deck. Agent 3 replaces this with extraction. */
 export async function POST(request: Request) {
   let body: unknown;
   try {
-    body = await request.json();
-  } catch {
-    return Response.json({ error: "Invalid JSON" }, { status: 400 });
+    body = await readJson(request, MAX_SOURCE_LENGTH * 6 + 4_096);
+  } catch (error) {
+    return invalidJson(error);
   }
 
   const parsed = ExtractRequest.safeParse(body);
@@ -15,16 +16,16 @@ export async function POST(request: Request) {
     return Response.json({ error: "Invalid request" }, { status: 400 });
   }
 
-  const title = parsed.data.title?.trim();
-  const deck = {
-    ...sampleDeck,
-    title: title ? title : sampleDeck.title,
-    concepts: sampleDeck.concepts.map((concept) => ({
-      ...concept,
-      facts: [...concept.facts],
-      related: [...concept.related],
-    })),
-  };
-  const payload = { deck } satisfies ExtractResponse;
-  return Response.json(payload);
+  const { text, title } = parsed.data;
+  if (!text.trim()) return Response.json({ error: "Add some source text before generating practice" }, { status: 400 });
+  if (text.length > MAX_SOURCE_LENGTH) {
+    return Response.json({ error: `Source text must be ${MAX_SOURCE_LENGTH.toLocaleString("en-US")} characters or fewer` }, { status: 413 });
+  }
+
+  const local = buildLocalDeck(text, title);
+  if (!local.concepts.length) return Response.json({ error: "Add a sentence or note to generate practice" }, { status: 400 });
+  const generated = await openAiDeck(local);
+  return Response.json(ExtractResponse.parse({ deck: generated ?? local }), {
+    headers: { "Cache-Control": "no-store", "X-Recall-Mode": generated ? "ai" : "local" },
+  });
 }

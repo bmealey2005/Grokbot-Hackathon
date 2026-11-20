@@ -158,7 +158,10 @@ describe("prefetch", () => {
       now: () => 0,
     });
     await runner.start();
-    expect(runner.getSnapshot().current?.envelope.spec.widget).toBe("typeAnswer");
+    expect(runner.getSnapshot().current?.envelope.spec).toMatchObject({
+      widget: "typeAnswer",
+      props: { prompt: "Which term matches this description? a means something specific", accepted: ["a"] },
+    });
     expect(runner.getSnapshot().isLoading).toBe(false);
     runner.dispose();
   });

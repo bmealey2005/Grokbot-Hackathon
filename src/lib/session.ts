@@ -7,6 +7,7 @@ export interface RecentTurn {
 }
 
 export interface SessionCurrent {
+  id: string;
   envelope: QuestionEnvelope;
   concept: Concept;
   level: Level;
@@ -110,7 +111,7 @@ export function fallbackEnvelope(request: QuestionRequest): QuestionEnvelope {
     spec: {
       widget: "typeAnswer",
       props: {
-        prompt: `What is ${request.concept.term}?`,
+        prompt: `Which term matches this description? ${request.concept.definition}`,
         accepted: [request.concept.term],
         explanation: request.concept.definition,
       },
@@ -134,6 +135,8 @@ export interface SessionRunner {
   dispose: () => void;
 }
 
+let nextSessionId = 0;
+
 export function createSessionRunner(options: {
   deck: Deck;
   getMastery: () => Record<string, MasteryRecord>;
@@ -141,6 +144,7 @@ export function createSessionRunner(options: {
   fetchQuestion: (request: QuestionRequest) => Promise<unknown>;
   now?: () => number;
 }): SessionRunner {
+  const sessionId = ++nextSessionId;
   const listeners = new Set<() => void>();
   let recent: RecentTurn[] = [];
   let answered = 0;
@@ -250,7 +254,7 @@ export function createSessionRunner(options: {
       }
       const envelope = await resolveEnvelope(request);
       if (disposed || token !== generation) return;
-      current = { envelope, concept: request.concept, level: request.level };
+      current = { id: `${sessionId}:${token}`, envelope, concept: request.concept, level: request.level };
       isLoading = false;
       armPrefetch(mastery, at, envelope);
       publish();
