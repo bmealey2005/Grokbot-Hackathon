@@ -1,13 +1,21 @@
+import { QuestionSkeleton } from "@/components";
+import type { Metadata } from "next";
 import { Suspense } from "react";
-import { RecallStudy } from "@/components/recall-ui";
+import { StudySession } from "./StudySession";
 
-export const metadata = { title: "Practice | Recall" };
+export const metadata: Metadata = {
+  title: "Study",
+};
+
+export default function StudyPage({ params }: { params: Promise<{ deckId: string }> }) {
+  return (
+    <Suspense fallback={<QuestionSkeleton />}>
+      <StudyBody params={params} />
+    </Suspense>
+  );
+}
 
 async function StudyBody({ params }: { params: Promise<{ deckId: string }> }) {
   const { deckId } = await params;
-  return <RecallStudy deckId={deckId} />;
-}
-
-export default function StudyPage({ params }: { params: Promise<{ deckId: string }> }) {
-  return <Suspense fallback={<p className="recall-loading">Loading practice…</p>}><StudyBody params={params} /></Suspense>;
+  return <StudySession deckId={deckId} />;
 }
