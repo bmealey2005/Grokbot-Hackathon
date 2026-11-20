@@ -4,7 +4,7 @@ Recall turns class notes into a study session that changes shape as you learn. P
 
 **Berkeley × Stanford Grok Bot Hackathon · Best Design**
 
-[Hackathon presentation](docs/Recall-deck.pdf)
+[Live app](https://recall.apps.grok.bot) · [Hackathon presentation](docs/Recall-deck.pdf)
 
 ## Inspiration
 
