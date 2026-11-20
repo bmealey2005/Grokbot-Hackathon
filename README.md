@@ -38,7 +38,7 @@ Improve written-answer grading and test which activities help students retain a 
 
 ## How Grok Bot helped build it
 
-Grok Bot turned the brief into a work order for a Cursor Cloud Agent and started a parallel build on its cloud computer. It also checked inference credential availability and proposed Local practice for imported readings when no approved key was available. This repository’s implementation follows that fallback approach. The full redacted Grok Bot session export is in [`docs/chat-histories/SESSION-EXPORT.md`](docs/chat-histories/SESSION-EXPORT.md).
+Grok Bot turned the brief into a work order for a Cursor Cloud Agent and started a parallel build on its cloud computer. It also checked inference credential availability and proposed Local practice for imported readings when no approved key was available. This repository’s implementation follows that fallback approach. The redacted Grok Bot session exports are in [`docs/chat-histories/`](docs/chat-histories/).
 
 ## How to run it
 
