@@ -2,7 +2,7 @@
 
 import { sampleDeck } from "@/fixtures";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { fetchQuestion } from "./aiClient";
+import { fetchQuestion } from "./studyClient";
 import type { AnswerResult } from "./schema";
 import {
   createSessionRunner,

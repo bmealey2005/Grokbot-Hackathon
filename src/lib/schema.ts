@@ -20,7 +20,7 @@ export type Deck = z.infer<typeof Deck>;
 
 export type Level = 1 | 2 | 3; // recognize, recall, apply
 
-// --- Generative UI: the AI may only emit these widgets ---
+// --- Question formats rendered by the study interface ---
 export const WidgetSpec = z.discriminatedUnion("widget", [
   z.object({
     widget: z.literal("multipleChoice"),
@@ -91,7 +91,7 @@ export const WidgetSpec = z.discriminatedUnion("widget", [
       prompt: z.string(),
       rubric: z.array(z.string()).min(1),
     }),
-  }), // graded by /api/grade
+  }),
 ]);
 export type WidgetSpec = z.infer<typeof WidgetSpec>;
 
@@ -111,7 +111,7 @@ export interface AnswerResult {
 // Every widget implements this props interface:
 export interface WidgetProps<S extends WidgetSpec> {
   spec: S["props"];
-  onSubmit: (result: AnswerResult) => void; // widget self-grades, except 'explain'
+  onSubmit: (result: AnswerResult) => void; // the widget reports the graded answer
 }
 
 export interface MasteryRecord {

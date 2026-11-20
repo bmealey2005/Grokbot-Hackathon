@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, type ReactNode, type Ref, useRef, useState, useSyncExternalStore } from "react";
 import { sampleDeck } from "@/fixtures";
-import { ExtractResponse, type Deck, type Concept } from "@/lib/schema";
+import type { Deck, Concept } from "@/lib/schema";
+import { extractDeck } from "@/lib/studyClient";
 import { masteryPercent } from "@/lib/scheduler";
 import { useRecallStore } from "@/lib/store";
 import { useSession } from "@/lib/useSession";
@@ -117,16 +118,9 @@ function ImportReading({ onImport, onCancel }: { onImport: (deck: Deck) => void;
     setLoading(true);
     setError("");
     try {
-      const response = await fetch("/api/extract", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: title.trim() || undefined, text: text.trim() }),
-        signal: AbortSignal.timeout(15_000),
-      });
-      if (!response.ok) throw new Error("Reading request failed");
-      const { deck } = ExtractResponse.parse(await response.json());
+      const { deck } = await extractDeck({ title: title.trim() || undefined, text: text.trim() });
       if (deck.id === sampleDeck.id || deck.concepts.length === 0) throw new Error("No new reading");
-      saveMode(deck.id, response.headers.get("X-Recall-Mode"));
+      saveMode(deck.id, "local");
       onImport(deck);
     } catch {
       setError("Recall couldn’t generate a study map from these notes. Your text is still here. Try again.");

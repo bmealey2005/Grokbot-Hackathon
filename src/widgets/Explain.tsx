@@ -1,6 +1,6 @@
 "use client";
 
-import { StudyClientError, gradeAnswer } from "@/lib/aiClient";
+import { StudyClientError, gradeAnswer } from "@/lib/studyClient";
 import type { Concept, WidgetProps, WidgetSpec } from "@/lib/schema";
 import { useState } from "react";
 import { Button } from "@/components/Button";

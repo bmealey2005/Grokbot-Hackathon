@@ -1,7 +1,7 @@
 "use client";
 
 import { type FormEvent, type ReactNode, useState } from "react";
-import { gradeAnswer } from "@/lib/aiClient";
+import { gradeAnswer } from "@/lib/studyClient";
 import { type AnswerResult, type WidgetSpec } from "@/lib/schema";
 import { type SessionCurrent } from "@/lib/session";
 import { Action, Icon } from "./recall-primitives";

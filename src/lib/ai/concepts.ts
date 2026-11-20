@@ -18,40 +18,12 @@ export function slugify(term: string): string {
   return slug || "concept";
 }
 
-export function hash32(input: string): string {
-  let hash = 2166136261;
-  for (let index = 0; index < input.length; index += 1) {
-    hash ^= input.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-  return (hash >>> 0).toString(16).padStart(8, "0");
-}
-
 export function limitWords(text: string, max: number): string {
   const words = text.trim().split(/\s+/).filter(Boolean);
   return words.slice(0, max).join(" ");
 }
 
-/** Drop details that do not share their content words with the source notes. */
-export function groundedFacts(facts: string[], source: string): string[] {
-  const haystack = source.toLowerCase();
-  const kept: string[] = [];
-  for (const fact of facts) {
-    const cleaned = fact.trim();
-    if (!cleaned) continue;
-    const words = cleaned.toLowerCase().match(/[a-z0-9]{4,}/g) ?? [];
-    if (words.length === 0) {
-      if (haystack.includes(cleaned.toLowerCase())) kept.push(cleaned);
-    } else {
-      const hits = words.filter((word) => haystack.includes(word)).length;
-      if (hits / words.length >= 0.5) kept.push(cleaned);
-    }
-    if (kept.length === 3) break;
-  }
-  return kept;
-}
-
-/** Stable ids are the slug plus a 1-based index, assigned on the server. */
+/** Stable ids are the slug plus a 1-based index, assigned on import. */
 export function assignConceptIds(raw: RawConcept[]): Concept[] {
   const staged = raw.map((item, index) => ({
     id: `${slugify(item.term)}-${index + 1}`,
@@ -85,10 +57,10 @@ export function assignConceptIds(raw: RawConcept[]): Concept[] {
   });
 }
 
-export function buildDeck(title: string, raw: RawConcept[], sourceForId: string): Deck {
+export function buildDeck(title: string, raw: RawConcept[]): Deck {
   const cleanTitle = title.trim() || "Study deck";
   return {
-    id: `${slugify(cleanTitle).slice(0, 32)}-${hash32(sourceForId)}`,
+    id: `reading-${crypto.randomUUID()}`,
     title: cleanTitle,
     concepts: assignConceptIds(raw),
     createdAt: Date.now(),

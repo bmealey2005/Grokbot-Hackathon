@@ -1,6 +1,6 @@
 "use client";
 
-import { StudyClientError, extractDeck } from "@/lib/aiClient";
+import { StudyClientError, extractDeck } from "@/lib/studyClient";
 import type { Concept, Deck } from "@/lib/schema";
 import { SAMPLE_DECK_ID } from "@/fixtures";
 import { useRecallStore } from "@/lib/store";
