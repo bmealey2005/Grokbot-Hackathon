@@ -1,13 +1,21 @@
+import { ResultsSkeleton } from "@/components";
+import type { Metadata } from "next";
 import { Suspense } from "react";
-import { RecallResults } from "@/components/recall-ui";
+import { ResultsScreen } from "./ResultsScreen";
 
-export const metadata = { title: "Practice results | Recall" };
+export const metadata: Metadata = {
+  title: "Results",
+};
+
+export default function ResultsPage({ params }: { params: Promise<{ deckId: string }> }) {
+  return (
+    <Suspense fallback={<ResultsSkeleton />}>
+      <ResultsBody params={params} />
+    </Suspense>
+  );
+}
 
 async function ResultsBody({ params }: { params: Promise<{ deckId: string }> }) {
   const { deckId } = await params;
-  return <RecallResults deckId={deckId} />;
-}
-
-export default function ResultsPage({ params }: { params: Promise<{ deckId: string }> }) {
-  return <Suspense fallback={<p className="recall-loading">Loading results…</p>}><ResultsBody params={params} /></Suspense>;
+  return <ResultsScreen deckId={deckId} />;
 }
