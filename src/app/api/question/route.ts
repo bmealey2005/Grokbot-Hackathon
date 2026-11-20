@@ -1,5 +1,6 @@
 import { buildLocalQuestion } from "@/lib/localPractice";
 import { QuestionEnvelopeSchema, QuestionRequest } from "@/lib/schema";
+import { grokQuestion } from "../grok";
 import { invalidJson, readJson } from "../readJson";
 
 export async function POST(request: Request) {
@@ -19,6 +20,9 @@ export async function POST(request: Request) {
     return Response.json({ error: "A concept needs a term and definition" }, { status: 400 });
   }
 
-  const envelope = QuestionEnvelopeSchema.parse(buildLocalQuestion(parsed.data));
-  return Response.json(envelope);
+  const local = buildLocalQuestion(parsed.data);
+  const generated = await grokQuestion(parsed.data, local);
+  return Response.json(QuestionEnvelopeSchema.parse(generated ?? local), {
+    headers: { "Cache-Control": "no-store", "X-Recall-Mode": generated ? "ai" : "local" },
+  });
 }

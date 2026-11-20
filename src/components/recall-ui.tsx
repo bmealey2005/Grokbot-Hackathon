@@ -195,7 +195,7 @@ export function RecallLibrary() {
           <>
             <header className="recall-reading-header">
               <h1>{selected.title}</h1>
-              <p className="recall-intro">{selected.concepts.length} concepts to review{mode === "local" && " · Local practice"}</p>
+              <p className="recall-intro">{selected.concepts.length} concepts to review{mode === "local" && " · Local practice"}{mode === "ai" && " · Mapped with Grok"}</p>
               <div className="recall-actions"><Action onClick={() => router.push(`/study/${encodeURIComponent(selected.id)}`)}>Start practice<Icon kind="arrow" /></Action></div>
             </header>
             <div className="recall-content-grid">
