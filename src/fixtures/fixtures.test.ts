@@ -8,9 +8,18 @@ import {
   QuestionEnvelopeSchema,
   WidgetSpec,
 } from "@/lib/schema";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { sampleDeck } from "./cell-biology";
 import { widgetSpecs } from "./widgets";
+
+beforeEach(() => {
+  vi.stubEnv("ANTHROPIC_API_KEY", "");
+  vi.stubEnv("DEMO_MODE", "");
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 const widgetNames = [
   "multipleChoice",
